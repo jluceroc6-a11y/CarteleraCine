@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using CarteleraCine;
+using Microsoft.Data.SqlClient;
 
 namespace CarteleraCine
 {
@@ -13,7 +13,7 @@ namespace CarteleraCine
         {
             bool continuar = true;
 
-            while (continuar)
+            do
             {
                 Console.WriteLine("\n===== CARTELERA DE CINE =====");
                 Console.WriteLine("1. Registrar funcion");
@@ -24,40 +24,54 @@ namespace CarteleraCine
                 Console.WriteLine("6. Salir");
                 Console.Write("Seleccione una opcion: ");
 
-                int opcion = int.Parse(Console.ReadLine());
-
-                switch (opcion)
+                if (!int.TryParse(Console.ReadLine(), out int opcion))
                 {
-                    case 1:
-                        RegistrarFuncion();
-                        break;
-
-                    case 2:
-                        ListarFunciones();
-                        break;
-
-                    case 3:
-                        BuscarFuncion();
-                        break;
-
-                    case 4:
-                        ActualizarPrecio();
-                        break;
-
-                    case 5:
-                        EliminarFuncion();
-                        break;
-
-                    case 6:
-                        continuar = false;
-                        Console.WriteLine("Gracias por utilizar el sistema.");
-                        break;
-
-                    default:
-                        Console.WriteLine("Opcion no valida.");
-                        break;
+                    Console.WriteLine("Opcion no valida.");
+                    continue;
                 }
-            }
+
+                if (opcion < 1 || opcion > 6)
+                {
+                    Console.WriteLine("Opcion no valida.");
+                    continue;
+                }
+
+                try
+                {
+                    switch (opcion)
+                    {
+                        case 1:
+                            RegistrarFuncion();
+                            break;
+
+                        case 2:
+                            ListarFunciones();
+                            break;
+
+                        case 3:
+                            BuscarFuncion();
+                            break;
+
+                        case 4:
+                            ActualizarPrecio();
+                            break;
+
+                        case 5:
+                            EliminarFuncion();
+                            break;
+
+                        case 6:
+                            continuar = false;
+                            Console.WriteLine("Gracias por utilizar el sistema.");
+                            break;
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    Console.WriteLine("Error de base de datos: " + ex.Message);
+                }
+
+            } while (continuar);
         }
 
         static void RegistrarFuncion()
@@ -71,16 +85,34 @@ namespace CarteleraCine
             funcion.Sala = Console.ReadLine();
 
             Console.Write("Precio: ");
-            funcion.Precio = decimal.Parse(Console.ReadLine());
+            string entradaPrecio = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(funcion.Pelicula) ||
+                string.IsNullOrWhiteSpace(funcion.Sala) ||
+                !decimal.TryParse(entradaPrecio, NumberStyles.Number,
+                    CultureInfo.InvariantCulture, out decimal precio) ||
+                precio <= 0)
+            {
+                Console.WriteLine("Datos inválidos.");
+                return;
+            }
+
+            funcion.Precio = precio;
 
             repositorio.Insertar(funcion);
 
-            Console.WriteLine("Funcion agregada correctamente.");
+            Console.WriteLine("Función registrada.");
         }
 
         static void ListarFunciones()
         {
             List<Funcion> funciones = repositorio.ListarTodos();
+
+            if (funciones.Count == 0)
+            {
+                Console.WriteLine("No hay funciones registradas.");
+                return;
+            }
 
             decimal total = 0;
 
@@ -99,7 +131,12 @@ namespace CarteleraCine
         static void BuscarFuncion()
         {
             Console.Write("Ingrese el ID de la funcion: ");
-            int id = int.Parse(Console.ReadLine());
+
+            if (!int.TryParse(Console.ReadLine(), out int id))
+            {
+                Console.WriteLine("Id inválido.");
+                return;
+            }
 
             Funcion funcion = repositorio.BuscarPorId(id);
 
@@ -109,40 +146,68 @@ namespace CarteleraCine
             }
             else
             {
-                Console.WriteLine("Funcion no encontrada.");
+                Console.WriteLine("No existe ese Id.");
             }
         }
 
         static void ActualizarPrecio()
         {
             Console.Write("Ingrese el ID de la funcion: ");
-            int id = int.Parse(Console.ReadLine());
+
+            if (!int.TryParse(Console.ReadLine(), out int id))
+            {
+                Console.WriteLine("Id inválido.");
+                return;
+            }
 
             Funcion funcion = repositorio.BuscarPorId(id);
 
-            if (funcion != null)
+            if (funcion == null)
             {
-                Console.Write("Ingrese el nuevo precio: ");
-                funcion.Precio = decimal.Parse(Console.ReadLine());
+                Console.WriteLine("No existe ese Id.");
+                return;
+            }
 
-                repositorio.Actualizar(funcion);
+            Console.Write("Ingrese el nuevo precio: ");
 
-                Console.WriteLine("Precio actualizado correctamente.");
+            if (!decimal.TryParse(Console.ReadLine(), NumberStyles.Number,
+                CultureInfo.InvariantCulture, out decimal nuevoPrecio) ||
+                nuevoPrecio <= 0)
+            {
+                Console.WriteLine("Precio inválido.");
+                return;
+            }
+
+            funcion.Precio = nuevoPrecio;
+
+            if (repositorio.Actualizar(funcion))
+            {
+                Console.WriteLine("Función actualizada.");
             }
             else
             {
-                Console.WriteLine("Funcion no encontrada.");
+                Console.WriteLine("No existe ese Id.");
             }
         }
 
         static void EliminarFuncion()
         {
             Console.Write("Ingrese el ID de la funcion: ");
-            int id = int.Parse(Console.ReadLine());
 
-            repositorio.Eliminar(id);
+            if (!int.TryParse(Console.ReadLine(), out int id))
+            {
+                Console.WriteLine("Id inválido.");
+                return;
+            }
 
-            Console.WriteLine("Funcion eliminada correctamente.");
+            if (repositorio.Eliminar(id))
+            {
+                Console.WriteLine("Función eliminada.");
+            }
+            else
+            {
+                Console.WriteLine("No existe ese Id.");
+            }
         }
     }
 }
