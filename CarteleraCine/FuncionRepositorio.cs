@@ -64,7 +64,7 @@ namespace CarteleraCine
             return funciones;
         }
 
-        public Funcion BuscarPorId(int id)
+        public Funcion? BuscarPorId(int id)
         {
             using (SqlConnection conexion = new SqlConnection(cadenaConexion))
             {
